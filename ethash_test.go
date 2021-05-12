@@ -79,16 +79,17 @@ var validBlocks = []*testBlock{
 
 var invalidZeroDiffBlock = testBlock{
 	number:      61440000,
-	hashNoNonce: crypto.Sha3Hash([]byte("foo")),
+	hashNoNonce: crypto.Keccak256Hash([]byte("foo")),
 	difficulty:  big.NewInt(0),
 	nonce:       0xcafebabec00000fe,
-	mixDigest:   crypto.Sha3Hash([]byte("bar")),
+	mixDigest:   crypto.Keccak256Hash([]byte("bar")),
 }
 
 func TestEthashVerifyValid(t *testing.T) {
 	eth := New()
 	for i, block := range validBlocks {
-		if !eth.Verify(block) {
+		_, ok := eth.Verify(block, nil)
+		if !ok {
 			t.Errorf("block %d (%x) did not validate.", i, block.hashNoNonce[:6])
 		}
 	}
@@ -96,7 +97,8 @@ func TestEthashVerifyValid(t *testing.T) {
 
 func TestEthashVerifyInvalid(t *testing.T) {
 	eth := New()
-	if eth.Verify(&invalidZeroDiffBlock) {
+	_, ok := eth.Verify(&invalidZeroDiffBlock, nil)
+	if !ok {
 		t.Errorf("should not validate - we just ensure it does not panic on this block")
 	}
 }
@@ -118,7 +120,8 @@ func TestEthashConcurrentVerify(t *testing.T) {
 	wg.Add(100)
 	for i := 0; i < 100; i++ {
 		go func() {
-			if !eth.Verify(block) {
+			_, ok := eth.Verify(block, nil)
+			if !ok {
 				t.Error("Block could not be verified")
 			}
 			wg.Done()
@@ -169,7 +172,8 @@ func TestEthashConcurrentSearch(t *testing.T) {
 
 	block.nonce = res.n
 	block.mixDigest = common.BytesToHash(res.md)
-	if !eth.Verify(block) {
+	_, ok := eth.Verify(block, nil)
+	if !ok {
 		t.Error("Block could not be verified")
 	}
 }
@@ -187,7 +191,8 @@ func TestEthashSearchAcrossEpoch(t *testing.T) {
 		nonce, md := eth.Search(block, nil, 0)
 		block.nonce = nonce
 		block.mixDigest = common.BytesToHash(md)
-		if !eth.Verify(block) {
+		_, ok := eth.Verify(block, nil)
+		if !ok {
 			t.Fatalf("Block could not be verified")
 		}
 	}
